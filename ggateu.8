@@ -1,0 +1,170 @@
+.\" Copyright (c) 2004 Pawel Jakub Dawidek <pjd@FreeBSD.org>
+.\" All rights reserved.
+.\"
+.\" Redistribution and use in source and binary forms, with or without
+.\" modification, are permitted provided that the following conditions
+.\" are met:
+.\" 1. Redistributions of source code must retain the above copyright
+.\"    notice, this list of conditions and the following disclaimer.
+.\" 2. Redistributions in binary form must reproduce the above copyright
+.\"    notice, this list of conditions and the following disclaimer in the
+.\"    documentation and/or other materials provided with the distribution.
+.\"
+.\" THIS SOFTWARE IS PROVIDED BY THE AUTHORS AND CONTRIBUTORS ``AS IS'' AND
+.\" ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+.\" IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+.\" ARE DISCLAIMED.  IN NO EVENT SHALL THE AUTHORS OR CONTRIBUTORS BE LIABLE
+.\" FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL
+.\" DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS
+.\" OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION)
+.\" HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+.\" LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY
+.\" OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF
+.\" SUCH DAMAGE.
+.\"
+.\" $FreeBSD$
+.\"
+.Dd April 2, 2011
+.Dt GGATEU 8
+.Os
+.Sh NAME
+.Nm ggateu
+.Nd "GEOM Gate union control utility"
+.Sh SYNOPSIS
+.Nm
+.Cm create
+.Op Fl v
+.Op Fl i Ar IV
+.Op Fl s Ar sectorsize
+.Op Fl t Ar timeout
+.Op Fl u Ar unit
+.Fl r Ar read-provider
+.Fl w Ar write-provider
+.Nm
+.Cm rescue
+.Op Fl i Ar IV
+.Op Fl v
+.Fl u Ar unit
+.Fl r Ar read-provider
+.Fl w Ar write-provider
+.Nm
+.Cm destroy
+.Op Fl f
+.Fl u Ar unit
+.Nm
+.Cm list
+.Op Fl v
+.Op Fl u Ar unit
+.Nm
+.Cm cat
+.Op Fl i Ar IV
+.Op Fl s Ar sectorsize
+.Op Fl r Ar read-provider
+.Fl w Ar write-provider
+.Sh DESCRIPTION
+The
+.Nm
+utility is a GEOM Gate class consumer.
+It can be used to create a block device conceptually similar to
+.Xr unionfs .
+Read requests are first served by upper layer provider
+.Ar ( write-provider ) .
+If entire sector returned is zero requests are then forwarded to lower layer
+.Ar ( read-provider ) .
+Write requests always go to
+.Ar write-provider .
+Data on upper layer provider is stored encrypted to eliminate used block maps
+or additional metadata.
+Probability of encrypted and zero sector collisions is negligible.
+Use
+.Cm cat
+command to extract plaintext data from upper layer provider.
+.Pp
+Available commands:
+.Bl -tag -width ".Cm destroy"
+.It Cm cat
+Output content of the provider to standard output.
+.It Cm create
+Create a
+.Nm ggate
+provider related to the given regular files and/or devices.
+.It Cm rescue
+Attach a worker process to an existing
+.Nm ggate
+provider.
+.It Cm destroy
+Destroy the given
+.Nm ggate
+provider.
+.It Cm list
+List
+.Nm ggate
+providers.
+.El
+.Pp
+Available options:
+.Bl -tag -width ".Fl s Cm ro | wo | rw"
+.It Fl i Ar IV
+Specify initialization vector for upper layer encryption.
+This option is required for
+.Nm
+provider created on top of another
+.Nm
+provider.
+.It Fl f
+Forcibly destroy
+.Nm ggate
+provider (cancels all pending requests).
+.It Fl r Ar read-provider
+Specify lower layer read-only provider to use.
+.It Fl s Ar sectorsize
+Sector size for
+.Nm ggate
+provider.
+If not specified, it is taken from device, or set to 512 bytes for files.
+.It Fl t Ar timeout
+Number of seconds to wait before an I/O request will be canceled.
+0 means no timeout.
+Default is 30.
+.It Fl u Ar unit
+Unit number to use.
+.It Fl v
+Do not fork, run in foreground and print debug informations on standard
+output.
+.It Fl w Ar write-provider
+Specify upper layer read-write provider to use.
+.El
+.Sh EXIT STATUS
+Exit status is 0 on success, or 1 if the command fails.
+To get details about the failure,
+.Nm
+should be called with the
+.Fl v
+option.
+.Sh EXAMPLES
+Create union geom for a file system before performing potentially dangerous
+operations.
+Use sparse file as upper layer provider.
+.Bd -literal -offset indent
+MEDIASIZE=XXX # /dev/ada0s5 media size
+truncate -s $MEDIASIZE testfs-tmp0
+ggateu create -u 5 -r /dev/ada0s5 -w testfs-tmp0
+fsdb /dev/ggate5
+ggateu destroy -u 5
+.Ed
+.Sh SEE ALSO
+.Xr geom 4 ,
+.Xr fsdb 8 ,
+.Xr ggatec 8 ,
+.Xr ggated 8 ,
+.Xr ggatel 8 ,
+.Xr mount_unionfs 8 ,
+.Sh AUTHORS
+The
+.Nm
+utility was written by
+.An Gleb Kurtsou Aq gleb@FreeBSD.org
+and based on
+.Xr ggatel 8 
+by
+.An Pawel Jakub Dawidek Aq pjd@FreeBSD.org .
